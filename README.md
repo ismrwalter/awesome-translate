@@ -57,7 +57,7 @@ globalkeys =
     globalkeys,
     -- 查询快捷键
     awful.key(
-        {keydefine.modkey},
+        {"Mod4"},
         "q",
         function()
             -- query 的第二个参数表示是否自动复制
@@ -67,7 +67,7 @@ globalkeys =
     ),
      -- 复制快捷键
     awful.key(
-        {keydefine.modkey},
+        {"Mod4"},
         "c",
         function()
             at.copy()
