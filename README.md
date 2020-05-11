@@ -11,8 +11,14 @@ Awesome translate 是一个为 Awesome WM 编写的翻译插件，目前支持�
 在Emacs中的效果
 ![emacs](./screenshots/emacs.gif)
 
+## 依赖
 
-# 安装&使用
++ curl
++ xclip
++ rofi(optional)
+
+## 安装&使用
+
 
 将本项目克隆到Awesome WM的配置目录下
 
@@ -34,7 +40,7 @@ local at = require("path.to.project") --项目路径，用 . 分隔
 -- Anki-Connect 的端口号
 -- at.anki.connect_port = 8080
 -- 单词字段
--- at.anki.world_field = "world"
+-- at.anki.word_field = "world"
 -- 释义字段
 -- at.anki.definition_field = "definition"
 -- 美式音标
