@@ -105,6 +105,7 @@ function buildAnkiData(data)
     fields[module.anki.definition_field] = data.definition
     fields[module.anki.us_pronunciations_field] = data.us_pronunciations
     fields[module.anki.uk_pronunciations_field] = data.uk_pronunciations
+
     local json_data = {
         action = "addNote",
         version = 6,
@@ -112,7 +113,7 @@ function buildAnkiData(data)
             note = {
                 deckName = module.anki.desk,
                 modelName = module.anki.model,
-                fields,
+                fields = fields,
                 options = {
                     allowDuplicate = false,
                     duplicateScope = "deck"
@@ -141,16 +142,17 @@ function buildAnkiData(data)
             }
         }
     }
+    
     return json.encode(json_data)
 end
 -- 保存到anki
 function saveAnki(data)
     local request_data = buildAnkiData(data)
-
+    gears.debug.dump(request_data, "fields", 4)
     local command =
         string.format(
         "curl --location --request GET 'localhost:%s'  --header 'Content-Type: application/json' --data-raw '%s'",
-        module.anki_connect_port,
+        module.anki.connect_port,
         string_trim(string_safe(request_data))
     )
     gears.debug.dump(command, "", 1)
@@ -263,7 +265,7 @@ function translate(input, copy)
                     text = "\n" .. table.concat(sentences, "\n"),
                     margin = 20,
                     replaces_id = module.last_notify_id,
-                    timeout = 0
+                    timeout = 10
                 }
             ).id
             module.last_result = table.concat(sentences, "\n")
