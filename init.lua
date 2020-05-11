@@ -101,10 +101,10 @@ end
 -- 构建anki请求数据结构
 function buildAnkiData(data)
     local fields = {}
-    fields[model.anki.word_field] = data.word
-    fields[model.anki.definition_field] = data.definition
-    fields[model.anki.us_pronunciations_field] = data.us_pronunciations
-    fields[model.anki.uk_pronunciations_field] = data.uk_pronunciations
+    fields[module.anki.word_field] = data.word
+    fields[module.anki.definition_field] = data.definition
+    fields[module.anki.us_pronunciations_field] = data.us_pronunciations
+    fields[module.anki.uk_pronunciations_field] = data.uk_pronunciations
     local json_data = {
         action = "addNote",
         version = 6,
