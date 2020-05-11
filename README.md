@@ -21,24 +21,31 @@ Awesome translate 是一个为 Awesome WM 编写的翻译插件，目前支持�
 ``` lua
 local at = require("path.to.project") --项目路径，用 . 分隔
 
-at.init(
-    {
-        -- 是否使用 rofi 展示单词，false 则使用通知展示
-        enable_rofi = false,
-        -- 是否启用 anki
-        enable_anki = true,
-        -- Anki保存单词的 Desk
-        anki_desk = "Word",
-        -- Anki保存单词的 NodeType
-        anki_model = "Word",
-        -- Anki-Connect 的端口号
-        anki_connect_port = 8701,
-        -- Anki保存美式发音的字段
-        us_audio_field = "USAudio",
-        -- Anki保存英式发音的字段
-        uk_audio_field = "UKAudio"
-    }
-)
+-- 下面为可选配置
+
+-- 是否使用 rofi 展示单词，false 则使用通知展示
+-- at.enable_rofi = false
+-- 是否启用 anki
+-- at.enable_anki = false
+-- Anki保存单词的 Desk
+-- at.anki.desk = "Default"
+ -- Anki保存单词的 NodeType
+-- at.anki.model = "Basic"
+-- Anki-Connect 的端口号
+-- at.anki.connect_port = 8080
+-- 单词字段
+-- at.anki.world_field = "world"
+-- 释义字段
+-- at.anki.definition_field = "definition"
+-- 美式音标
+-- at.anki.us_pronunciations_field = "us_pronunciations"
+-- 英式音标
+-- at.anki.uk_pronunciations_field = "uk_pronunciations"
+-- Anki保存美式发音的字段
+-- at.anki.us_audio_field = "audio"
+-- Anki保存英式发音的字段
+-- at.anki.uk_audio_field = "audio"
+
 globalkeys =
     gears.table.join(
     globalkeys,

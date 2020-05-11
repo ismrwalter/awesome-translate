@@ -7,6 +7,20 @@ local module = {}
 module.last_notify_id = 0
 module.last_result = {}
 
+module.enable_rofi = false
+
+module.enable_anki = false
+module.anki = {}
+module.anki.desk = "Default"
+module.anki.model = "Basic"
+module.anki.connect_port = 8080
+module.anki.world_field = "world"
+module.anki.definition_field = "definition"
+module.anki.us_pronunciations_field = "us_pronunciations"
+module.anki.uk_pronunciations_field = "uk_pronunciations"
+module.anki.us_audio_field = "audio"
+module.anki.uk_audio_field = "audio"
+
 function string_trim(s)
     return (s:gsub("^%s*(.-)%s*$", "%1"))
 end
@@ -86,19 +100,21 @@ function show_rofi(data)
 end
 -- 构建anki请求数据结构
 function buildAnkiData(data)
+    local fields = {}
+    fields[model.anki.word_field] = data.word
+    fields[model.anki.definition_field] = data.definition
+    fields[model.anki.us_pronunciations_field] = data.us_pronunciations
+    fields[model.anki.uk_pronunciations_field] = data.uk_pronunciations
     local json_data = {
         action = "addNote",
         version = 6,
         params = {
             note = {
-                deckName = module.anki_desk,
-                modelName = module.anki_model,
-                fields = {
-                    Word = data.word,
-                    Definition = data.definition
-                },
+                deckName = module.anki.desk,
+                modelName = module.anki.model,
+                fields,
                 options = {
-                    allowDuplicate = module.allow_duplicate,
+                    allowDuplicate = false,
                     duplicateScope = "deck"
                 },
                 tags = {
@@ -110,7 +126,7 @@ function buildAnkiData(data)
                         filename = data.word .. "us.mp3",
                         skipHash = "7e2c2f954ef6051373ba916f000168dc",
                         fields = {
-                            module.us_audio_field
+                            module.anki.us_audio_field
                         }
                     },
                     {
@@ -118,7 +134,7 @@ function buildAnkiData(data)
                         filename = data.word .. "uk.mp3",
                         skipHash = "7e2c2f954ef6051373ba916f000168dc",
                         fields = {
-                            module.uk_audio_field
+                            module.anki.uk_audio_field
                         }
                     }
                 }
@@ -274,17 +290,6 @@ function set_clipboard(text, callback)
             end
         )
     end
-end
-
-function module.init(args)
-    module.enable_rofi = args.enable_rofi or false
-    module.enable_anki = args.enable_anki or false
-    module.anki_desk = args.anki_desk or "Default"
-    module.anki_model = args.anki_model or "Basic"
-    module.anki_connect_port = args.anki_connect_port or 8080
-    module.allow_duplicate = args.allow_duplicate or false
-    module.us_audio_field = args.us_audio_field or "audio"
-    module.uk_audio_field = args.uk_audio_field or "audio"
 end
 
 function module.query(data, copy)
