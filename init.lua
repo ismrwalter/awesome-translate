@@ -1,7 +1,7 @@
 local awful = require("awful")
 local wibox = require("wibox")
 local naughty = require("naughty")
-local json = require("utils.json")
+local json = require("awesome-translator.json")
 local module = {}
 
 module.last_notify_id = 0
@@ -16,8 +16,8 @@ module.anki.model = "Basic"
 module.anki.connect_port = 8080
 module.anki.word_field = "word"
 module.anki.definition_field = "definition"
-module.anki.us_pronunciations_field = "us_pronunciations"
-module.anki.uk_pronunciations_field = "uk_pronunciations"
+module.anki.us_pronunciation_field = "us_pronunciation"
+module.anki.uk_pronunciation_field = "uk_pronunciation"
 module.anki.us_audio_field = "audio"
 module.anki.uk_audio_field = "audio"
 
@@ -35,13 +35,15 @@ function is_word(s)
     return result
 end
 
-function show_message(error)
+function show_error(e)
+   show_message(e.message)
+end
+function show_message(message)
     local message_notify =
         naughty.notify(
         {
-            title = "Awesome",
-            text = error,
-            margin = 20,
+            title = "Awesome translator",
+            text = message,
             replaces_id = module.last_notify_id
         }
     )
@@ -49,34 +51,23 @@ function show_message(error)
 end
 -- 通过通知显示单词信息
 function show_notify(data)
-    if module.enable_anki then
-        module.last_notify_id =
-            naughty.notify(
-            {
-                title = data.word,
-                text = "\nus:[" ..
-                    data.us_pronunciations .. "] uk:[" .. data.uk_pronunciations .. "]\n" .. data.definition,
-                margin = 20,
-                replaces_id = module.last_notify_id,
-                actions = {
-                    save = function()
-                        saveAnki(data)
-                    end
-                }
-            }
-        ).id
-    else
-        module.last_notify_id =
-            naughty.notify(
-            {
-                title = data.word,
-                text = "\nus:[" ..
-                    data.us_pronunciations .. "] uk:[" .. data.uk_pronunciations .. "]\n" .. data.definition,
-                margin = 20,
-                replaces_id = module.last_notify_id
-            }
-        ).id
-    end
+   local message = {
+      title = data.word,
+      text = "us: [" .. data.us_pronunciation .. "]   uk: [" .. data.uk_pronunciation .. "]\n\n" .. data.definition,
+      replaces_id = module.last_notify_id,
+      timeout = 10
+   }
+   if module.enable_anki then
+      message.actions = {
+         save = function()
+            saveAnki(data)
+         end
+      }
+   end
+   module.last_notify_id =
+      naughty.notify(
+         message
+      ).id
 end
 -- 通过rofi显示单词信息
 function show_rofi(data)
@@ -85,8 +76,8 @@ function show_rofi(data)
         "echo '%s'|rofi -dmenu  -p 'Query>' -selected-row 0 -a 0",
         string_safe(data.word) ..
             "\nus:[" ..
-                string_safe(data.us_pronunciations) ..
-                    "] uk:[" .. string_safe(data.uk_pronunciations) .. "]\n" .. string_safe(data.definition)
+                string_safe(data.us_pronunciation) ..
+                    "] uk:[" .. string_safe(data.uk_pronunciation) .. "]\n" .. string_safe(data.definition)
     )
     awful.spawn.easy_async_with_shell(
         command,
@@ -100,11 +91,13 @@ function show_rofi(data)
 end
 -- 构建anki请求数据结构
 function buildAnkiData(data)
+    local definition = split_definition(data.definition)
+
     local fields = {}
     fields[module.anki.word_field] = data.word
-    fields[module.anki.definition_field] = data.definition
-    fields[module.anki.us_pronunciations_field] = data.us_pronunciations
-    fields[module.anki.uk_pronunciations_field] = data.uk_pronunciations
+    fields[module.anki.definition_field] = table.concat(definition, "<br>")
+    fields[module.anki.us_pronunciation_field] = data.us_pronunciation
+    fields[module.anki.uk_pronunciation_field] = data.uk_pronunciation
 
     local json_data = {
         action = "addNote",
@@ -142,31 +135,27 @@ function buildAnkiData(data)
             }
         }
     }
-    
+
     return json.encode(json_data)
 end
 -- 保存到anki
 function saveAnki(data)
     local request_data = buildAnkiData(data)
-    gears.debug.dump(request_data, "fields", 4)
     local command =
         string.format(
         "curl --location --request GET 'localhost:%s'  --header 'Content-Type: application/json' --data-raw '%s'",
         module.anki.connect_port,
         string_trim(string_safe(request_data))
     )
-    gears.debug.dump(command, "", 1)
     awful.spawn.easy_async_with_shell(
         command,
         function(stdout, stderr, reason, exit_code)
             if exit_code ~= 0 then
                 show_message("保存失败：连接Anki出错")
-                gears.debug.dump(reason .. "|" .. stderr, "request failed", 2)
                 return
             end
 
             local response = json.decode(stdout)
-            gears.debug.dump(response, "", 2)
             if response.error ~= nil then
                 show_message("保存失败：" .. response.error)
             else
@@ -185,46 +174,54 @@ function split_definition(inputstr)
     return t
 end
 function convert_response(response)
-    local data = {}
-    data.word = response.data.content
-    data.us_audio = response.data.us_audio
-    data.uk_audio = response.data.uk_audio
 
-    data.definition = table.concat(split_definition(response.data.definition), "\n")
-    data.us_pronunciations = response.data.pronunciations.us
-    data.uk_pronunciations = response.data.pronunciations.uk
+    local data = {}
+    data.word = response.query
+    data.us_audio = ""
+    data.uk_audio = ""
+    if response.basic==nil then
+        error({message="未找到单词"})
+    end
+    data.definition =  table.concat(response.basic.explains, "\n")
+    data.us_pronunciation = response.basic["us-phonetic"] or ""
+    data.uk_pronunciation = response.basic["uk-phonetic"] or ""
     return data
 end
 
 -- 单词查询
-function dict(word, copy)
+function query(word, copy)
     word = word or ""
-    local url = string.format("https://api.shanbay.com/bdc/search/?word=%s", string_trim(string_safe(word)))
+    local url = string.format("http://fanyi.youdao.com/openapi.do?keyfrom=YouDaoCV&key=659600698&type=data&doctype=json&version=1.1&q=%s", string_trim(string_safe(word)))
     local command = string.format("curl -s -H 'Accept: application/json' --request GET '%s'", url)
     awful.spawn.easy_async_with_shell(
-        command,
-        function(stdout, stderr, reason, exit_code)
-            if exit_code ~= 0 then
-                show_message("查询失败：命令执行失败")
-                return
-            end
-            local response = json.decode(stdout)
+       command,
+       function(stdout, stderr, reason, exit_code)
+          local inner=function(stdout,stderr,reason,exit_code)
+             if exit_code ~= 0 then
+                error({message="查询失败：命令执行失败"})
+             end
 
-            if response.status_code ~= 0 then
-                show_message(response.msg)
-            end
-            local data = convert_response(response)
-            if module.enable_rofi then
+             local response = json.decode(stdout)
+             if response.errorCode ~= 0 then
+                error({message=response.msg})
+             end
+             local data = convert_response(response)
+             if module.enable_rofi then
                 show_rofi(data)
-            else
+             else
                 show_notify(data)
-            end
-            -- 保存结果
-            module.last_result = data.definition
-            if copy then
+             end
+             -- 保存结果
+             module.last_result = data.definition
+             if copy then
                 set_clipboard(module.last_result)
-            end
-        end
+             end
+          end
+          local state,result = pcall(inner,stdout,stderr,reason,exit_code)
+          if not state then
+             show_error(result)
+          end
+       end
     )
 end
 
@@ -236,42 +233,45 @@ function translate(input, copy)
         "curl --location --request POST 'http://fanyi.youdao.com/translate?smartresult=dict&smartresult=rule' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'i=%s' --data-urlencode 'from=AUTO' --data-urlencode 'to=AUTO' --data-urlencode 'doctype=json'",
         string_trim(string_safe(input))
     )
-    gears.debug.dump(command)
     awful.spawn.easy_async_with_shell(
         command,
         function(stdout, stderr, reason, exit_code)
-            if exit_code ~= 0 then
-                show_message("翻译失败：命令执行失败")
-                return
-            end
-            local response = json.decode(stdout)
-            if response.errorCode ~= 0 then
-                show_message(response.msg)
-            end
-            -- gears.debug.dump(response, "translate", 4)
+           local inner = function(stdout, stderr, reason, exit_code)
+              if exit_code ~= 0 then
+                 show_message({message="翻译失败：命令执行失败"})
+                 return
+              end
+              local response = json.decode(stdout)
+              if response.errorCode ~= 0 then
+                 show_message({message=response.msg})
+              end
+              -- gears.debug.dump(response, "translate", 4)
 
-            local sentences = {}
-            for _, paragraph in ipairs(response.translateResult) do
-                gears.debug.dump(paragraph, "paragraph", 4)
-                for _, item in ipairs(paragraph) do
+              local sentences = {}
+              for _, paragraph in ipairs(response.translateResult) do
+                 for _, item in ipairs(paragraph) do
                     table.insert(sentences, item.tgt)
-                end
-            end
+                 end
+              end
 
-            module.last_notify_id =
-                naughty.notify(
-                {
-                    title = "翻译 [" .. response.type .. "]",
-                    text = "\n" .. table.concat(sentences, "\n"),
-                    margin = 20,
-                    replaces_id = module.last_notify_id,
-                    timeout = 10
-                }
-            ).id
-            module.last_result = table.concat(sentences, "\n")
-            if copy then
-                set_clipboard(module.last_result)
-            end
+              module.last_notify_id =
+                 naughty.notify(
+                    {
+                       title = "翻译",
+                       text = "\n" .. table.concat(sentences, "\n"),
+                       replaces_id = module.last_notify_id,
+                       timeout = 10
+                    }
+                 ).id
+              module.last_result = table.concat(sentences, "\n")
+              if copy then
+                 set_clipboard(module.last_result)
+              end
+           end
+          local state,result = pcall(inner,stdout,stderr,reason,exit_code)
+          if not state then
+             show_error(result)
+          end
         end
     )
 end
@@ -293,13 +293,13 @@ function set_clipboard(text, callback)
         )
     end
 end
-
 function module.query(data, copy)
-    if is_word(data) then
-        dict(data, copy)
-    else
-        translate(data, copy)
-    end
+   if is_word(data) then
+      query(data,copy)
+   else
+      translate(data,copy)
+   end
+
 end
 
 function module.copy(text)

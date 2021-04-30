@@ -1,6 +1,6 @@
-# Awesome translate
+# Awesome translator
 
-Awesome translate 是一个为 Awesome WM 编写的翻译插件，目前支持单词和整句翻译。单词可以通过 Anki-Connect 保存到Anki中。
+Awesome translator 是一个为 Awesome WM 编写的翻译插件，目前支持单词和整句翻译。单词可以通过 Anki-Connect 保存到Anki中。
 
 复制单词释义
 ![copy](./screenshots/copy.gif)
@@ -57,7 +57,7 @@ globalkeys =
     globalkeys,
     -- 查询快捷键
     awful.key(
-        {"Mod4"},
+        {keydefine.modkey},
         "q",
         function()
             -- query 的第二个参数表示是否自动复制
@@ -67,7 +67,7 @@ globalkeys =
     ),
      -- 复制快捷键
     awful.key(
-        {"Mod4"},
+        {keydefine.modkey},
         "c",
         function()
             at.copy()
@@ -76,7 +76,3 @@ globalkeys =
 )
 
 ```
-
-重新启动 Awesome WM。选中需要翻译的单词或句子，按下快捷键即可。
-
-
