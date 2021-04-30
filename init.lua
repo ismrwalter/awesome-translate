@@ -1,7 +1,7 @@
 local awful = require("awful")
 local wibox = require("wibox")
 local naughty = require("naughty")
-local json = require("awesome-translator.json")
+local json = require("awm-translator.json")
 local module = {}
 
 module.last_notify_id = 0
